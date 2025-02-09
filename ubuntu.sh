@@ -640,55 +640,6 @@ server {
 
 NGEOF
 
-#region certbot_setup
-if $certbot; then
-tput setaf 3;
-echo "Process: add nginx config (certbot-1);"
-tput setaf 7;
-cat >> "/etc/nginx/conf.d/$host.conf" << NGEOF
-	# with https
-    location / { return 301 https://\$server_name\$request_uri; }
-}
-NGEOF
-
-tput setaf 3;
-echo "Process: prepare certificate;"
-tput setaf 7;
-nginx -t;
-systemctl restart nginx;
-if $cloudflare; then
-	certbot certonly -t -n --agree-tos --dns-cloudflare --dns-cloudflare-credentials /etc/cloudflare/cloudflare.ini --dns-cloudflare-propagation-seconds 60 --server https://acme-v02.api.letsencrypt.org/directory $([ ${#hostarr[*]} -eq 2 ] && echo " -d $host -d *.$host" || echo " -d $host") -m "$cf_mail";
-else
-	mkdir -p /var/www/html;
-	certbot certonly -t -n --agree-tos --webroot --webroot-path /var/www/html $([ ${#hostarr[*]} -eq 2 ] && echo " -d $host" || echo " -d $host") -m "$cf_mail";
-fi
-
-tput setaf 3;
-echo "Process: add nginx config (certbot-2);"
-tput setaf 7;
-cat >> "/etc/nginx/conf.d/$host.conf" << NGEOF
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $host;
-
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:ssl_session_cache:10m;
-    ssl_session_tickets off;
-
-    # To use Let's Encrypt certificate
-    ssl_certificate     /etc/letsencrypt/live/$host/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$host/privkey.pem;
-
-    # SSL protocol settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_stapling on;
-    ssl_stapling_verify on;
-NGEOF
-fi
-#endregion
 
 tput setaf 3;
 echo "Process: add nginx config;"
